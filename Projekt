@@ -1,0 +1,408 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+using System.Windows.Shapes;
+using System.Threading;
+using System.Windows.Threading;
+using System.Globalization;
+
+namespace SO_Projekt
+{
+
+    public partial class MainWindow : Window
+    {
+
+        static List<Rectangle> carsL = new List<Rectangle>();
+        static List<Rectangle> carsR = new List<Rectangle>();
+        static List<Rectangle> train = new List<Rectangle>();
+        DispatcherTimer cartimerL = new DispatcherTimer();
+        DispatcherTimer cartimerR = new DispatcherTimer();
+        static int[,] coordinatesL;
+        static int[,] coordinatesR;
+        public static bool trainiscomming = true;
+        static List<int> listaAutKoordynatL = new List<int>();
+        static List<int> listaAutKoordynatR = new List<int>();
+
+        private delegate void drawCarDelegate(Canvas canvas, double w, double h, double x, double y, Brush brush, bool right);
+        private delegate void ControlCar();
+        private delegate int CARRRR(Rectangle movingcar);
+        private delegate int TrainDelegate(Rectangle movingtrain);
+        public static void DrawCar(Canvas canvas, double w, double h, double x, double y, Brush brush, bool right)
+        {
+            if (!canvas.Dispatcher.CheckAccess())
+            {
+                canvas.Dispatcher.Invoke(new drawCarDelegate(DrawCar), new object[] { canvas, w, h, x, y, brush, right });
+            }
+            else
+            {
+                ImageBrush img = new ImageBrush();
+                BitmapImage bi = new BitmapImage();
+                Rectangle car = new Rectangle();
+                //bi.BeginInit();
+                //bi.UriSource = new Uri("pack://application:,,,/Images/auto.jpg", UriKind.RelativeOrAbsolute);
+                //bi.EndInit();
+                //img.ImageSource = bi;
+                car.Fill = Brushes.Red;
+                car.Width = w;
+                car.Height = h;
+                canvas.Children.Add(car);
+                Canvas.SetLeft(car, x);
+                Canvas.SetTop(car, y);
+
+                if (right == true)
+                {
+                    carsR.Add(car);
+                    listaAutKoordynatR.Add(0);
+                }
+                else
+                {
+                    carsL.Add(car);
+                    listaAutKoordynatL.Add(0);
+                }
+            }
+        }
+        private static void DrawTrain(Canvas canvas, double w, double h, double x, double y, Brush brush, bool right)
+        {
+            if (!canvas.Dispatcher.CheckAccess())
+            {
+                canvas.Dispatcher.Invoke(new drawCarDelegate(DrawTrain), new object[] { canvas, w, h, x, y, brush, right });
+            }
+            else
+            {
+                Rectangle tr = new Rectangle();
+                tr.Fill = Brushes.Red;
+                tr.Width = 100;
+                tr.Height = 50;
+                canvas.Children.Add(tr);
+                //top 230
+                Canvas.SetLeft(tr, x);
+                Canvas.SetTop(tr, y);
+            }
+
+        }
+
+
+
+
+        public MainWindow()
+        {
+            InitializeComponent();
+
+            GetCoordinates();
+
+            Random random = new Random();
+            Random leftRight = new Random();
+            for (int i = 0; i < 7; i++)
+            {
+                if (leftRight.Next(1, 3) == 1)
+                {
+                    int num = random.Next(300, 600);
+                    MainWindow.DrawCar(mapa, 10, 10, num, 400, Brushes.Red, true);
+                }
+                else
+                {
+                    int num = random.Next(50, 100);
+                    MainWindow.DrawCar(mapa, 10, 10, num, 165, Brushes.Red, false);
+                }
+            }
+
+
+            MainWindow.DrawTrain(mapa, 20, 10,-30,230,Brushes.Red,true);
+
+
+            Thread carL = new Thread(() => CarTimerEventR());
+            Thread carR = new Thread(() => CarTimerEventL());
+            Thread traintime = new Thread(() => TrainTimerEvent());
+
+            carL.Start();
+
+            carR.Start();
+
+            //cartimerL.Tick += CarTimerEventL;
+            //cartimerL.Interval = TimeSpan.FromMilliseconds(20);
+            //cartimerL.Start();
+
+            //cartimerR.Tick += CarTimerEventR;
+            //cartimerR.Interval = TimeSpan.FromMilliseconds(20);
+            //cartimerR.Start();
+        }
+
+        private void GetCoordinates()
+        {
+
+            coordinatesL = new int[2, mapa.Children.Count];
+            coordinatesR = new int[2, mapa.Children.Count];
+            int elementL = 0;
+            int elementR = 0;
+
+            foreach (Rectangle rect in mapa.Children)
+            {
+                if (rect.Tag.Equals("L"))
+                {
+                    coordinatesL[0, elementL] = (int)Canvas.GetLeft(rect);
+                    coordinatesL[1, elementL] = (int)Canvas.GetTop(rect);
+                    elementL++;
+                }
+                else
+                {
+                    coordinatesR[0, elementR] = (int)Canvas.GetLeft(rect);
+                    coordinatesR[1, elementR] = (int)Canvas.GetTop(rect);
+                    elementR++;
+                }
+            }
+        }
+
+        private int MoveTrain()
+        {
+            return 0;
+        }
+
+
+        private int CarR(Rectangle movingcar)
+        {
+            if (!mapa.Dispatcher.CheckAccess())
+            {
+                mapa.Dispatcher.Invoke(new CARRRR(CarR), new object[] { movingcar });
+                return 0;
+            }
+            else
+            {
+                //left
+                if (coordinatesR[0, listaAutKoordynatR[carsR.IndexOf(movingcar)]] < Canvas.GetLeft(movingcar))
+                {
+                    Canvas.SetLeft(movingcar, Canvas.GetLeft(movingcar) - 10);
+                    if (coordinatesR[0, listaAutKoordynatR[carsR.IndexOf(movingcar)]] > Canvas.GetLeft(movingcar))
+                    {
+                        Canvas.SetLeft(movingcar, coordinatesR[0, listaAutKoordynatR[carsR.IndexOf(movingcar)]]);
+                    }
+
+                }
+
+                //right
+                else if (coordinatesR[0, listaAutKoordynatR[carsR.IndexOf(movingcar)]] > Canvas.GetLeft(movingcar) )
+                {
+                    Canvas.SetLeft(movingcar, Canvas.GetLeft(movingcar) + 10);
+                    if (coordinatesR[0, listaAutKoordynatR[carsR.IndexOf(movingcar)]] < Canvas.GetLeft(movingcar))
+                    {
+                        Canvas.SetLeft(movingcar, coordinatesR[0, listaAutKoordynatR[carsR.IndexOf(movingcar)]]);
+                    }
+                }
+
+                //top
+                if (coordinatesR[1, listaAutKoordynatR[carsR.IndexOf(movingcar)]] < Canvas.GetTop(movingcar) )
+                {
+                    Canvas.SetTop(movingcar, Canvas.GetTop(movingcar) - 10);
+                    if (coordinatesR[0, listaAutKoordynatR[carsR.IndexOf(movingcar)]] > Canvas.GetTop(movingcar))
+                    {
+                        Canvas.SetTop(movingcar, coordinatesR[1, listaAutKoordynatR[carsR.IndexOf(movingcar)]]);
+                    }
+
+                }
+
+                //bottom
+                if (coordinatesR[1, listaAutKoordynatR[carsR.IndexOf(movingcar)]] > Canvas.GetTop(movingcar))
+                {
+                    Canvas.SetTop(movingcar, Canvas.GetTop(movingcar) + 10);
+                    if (coordinatesR[0, listaAutKoordynatR[carsR.IndexOf(movingcar)]] < Canvas.GetTop(movingcar))
+                    {
+                        Canvas.SetTop(movingcar, coordinatesR[1, listaAutKoordynatR[carsR.IndexOf(movingcar)]]);
+                    }
+
+                }
+
+                if (coordinatesR[1, listaAutKoordynatR[carsR.IndexOf(movingcar)]] == Canvas.GetTop(movingcar) && coordinatesR[0, listaAutKoordynatR[carsR.IndexOf(movingcar)]] == Canvas.GetLeft(movingcar))
+                {
+                    listaAutKoordynatR[carsR.IndexOf(movingcar)]++;
+                }
+                return 0;
+            }
+        }
+
+
+
+        private int CarL(Rectangle movingcar)
+        {
+            if (!mapa.Dispatcher.CheckAccess())
+            {
+                mapa.Dispatcher.Invoke(new CARRRR(CarL), new object[] { movingcar });
+                return 0;
+            }
+            else
+            {
+                //left
+                if (coordinatesL[0, listaAutKoordynatL[carsL.IndexOf(movingcar)]] < Canvas.GetLeft(movingcar))
+                {
+                    Canvas.SetLeft(movingcar, Canvas.GetLeft(movingcar) - 10);
+                    if (coordinatesL[0, listaAutKoordynatL[carsL.IndexOf(movingcar)]] > Canvas.GetLeft(movingcar))
+                    {
+                        Canvas.SetLeft(movingcar, coordinatesL[0, listaAutKoordynatL[carsL.IndexOf(movingcar)]]);
+                    }
+
+                }
+
+                //right
+                else if (coordinatesL[0, listaAutKoordynatL[carsL.IndexOf(movingcar)]] > Canvas.GetLeft(movingcar) )
+                {
+                    Canvas.SetLeft(movingcar, Canvas.GetLeft(movingcar) + 10);
+                    if (coordinatesL[0, listaAutKoordynatL[carsL.IndexOf(movingcar)]] < Canvas.GetLeft(movingcar))
+                    {
+                        Canvas.SetLeft(movingcar, coordinatesL[0, listaAutKoordynatL[carsL.IndexOf(movingcar)]]);
+                    }
+                }
+
+                //top
+                if (coordinatesL[1, listaAutKoordynatL[carsL.IndexOf(movingcar)]] < Canvas.GetTop(movingcar))
+                {
+                    Canvas.SetTop(movingcar, Canvas.GetTop(movingcar) - 10);
+                    if (coordinatesL[0, listaAutKoordynatL[carsL.IndexOf(movingcar)]] > Canvas.GetTop(movingcar))
+                    {
+                        Canvas.SetTop(movingcar, coordinatesL[1, listaAutKoordynatL[carsL.IndexOf(movingcar)]]);
+                    }
+
+                }
+
+                //bottom
+                if (coordinatesL[1, listaAutKoordynatL[carsL.IndexOf(movingcar)]] > Canvas.GetTop(movingcar) )
+                {
+                    Canvas.SetTop(movingcar, Canvas.GetTop(movingcar) + 10);
+                    if (coordinatesL[0, listaAutKoordynatL[carsL.IndexOf(movingcar)]] < Canvas.GetTop(movingcar))
+                    {
+                        Canvas.SetTop(movingcar, coordinatesL[1, listaAutKoordynatL[carsL.IndexOf(movingcar)]]);
+                    }
+
+                }
+
+                if (coordinatesL[1, listaAutKoordynatL[carsL.IndexOf(movingcar)]] == Canvas.GetTop(movingcar) && coordinatesL[0, listaAutKoordynatL[carsL.IndexOf(movingcar)]] == Canvas.GetLeft(movingcar))
+                {
+                    listaAutKoordynatL[carsL.IndexOf(movingcar)]++;
+                }
+                return 0;
+            }
+        }
+
+
+
+        private int ResetCarR(Rectangle movingcar)
+        {
+            if (!mapa.Dispatcher.CheckAccess())
+            {
+                mapa.Dispatcher.Invoke(new CARRRR(ResetCarR), new object[] { movingcar });
+                return 0;
+            }
+            else
+            {
+                Canvas.SetTop(movingcar,  425);
+                Canvas.SetLeft(movingcar, 800);
+                listaAutKoordynatR[carsR.IndexOf(movingcar)] = 0;
+                return 0;
+            }
+        }
+
+        private int ResetCarL(Rectangle movingcar)
+        {
+            if (!mapa.Dispatcher.CheckAccess())
+            {
+                mapa.Dispatcher.Invoke(new CARRRR(ResetCarL), new object[] { movingcar });
+                return 0;
+            }
+            else
+            {
+                Canvas.SetTop(movingcar, 165);
+                Canvas.SetLeft(movingcar, -10);
+                listaAutKoordynatL[carsL.IndexOf(movingcar)] = 0;
+                return 0;
+            }
+        }
+
+         private void TrainTimerEvent()
+        {
+            while (true)
+            {
+
+
+                
+
+               
+                Thread.Sleep(20);
+            }
+
+
+        }
+
+
+
+
+        #region Sterowanie
+        private void CarTimerEventR()
+        {
+            while (true)
+            {
+
+                foreach (var movingcar in carsR)
+                {
+                    if (listaAutKoordynatR[carsR.IndexOf(movingcar)] <= 10)
+                    {
+
+                        CarR(movingcar);
+
+                    }
+                    else
+                    {
+                        Random rnd = new Random();
+                        if (rnd.Next(0, 200) == 1)
+                        {
+                            ResetCarR(movingcar);
+                        }
+                    }
+
+                }
+                Thread.Sleep(20);
+            }
+
+
+        }
+
+        private void CarTimerEventL()
+        {
+
+            while (true)
+            {
+                foreach (var movingcar in carsL)
+                {
+
+
+                    if (listaAutKoordynatL[carsL.IndexOf(movingcar)] <= 10)
+                    {
+
+                        CarL(movingcar);
+
+
+
+                    }
+                    else {
+
+                        Random rnd = new Random();
+                        if (rnd.Next(0, 200) == 1)
+                        {
+                            ResetCarL(movingcar);
+                        }
+                    }
+
+                }
+                Thread.Sleep(20);
+            }
+
+        }
+        #endregion
+    }
+}
